@@ -162,6 +162,102 @@ func TestEnsureNodeExistsByProviderID(t *testing.T) {
 	}
 }
 
+func Test_ensureNodeProvidedIPExists(t *testing.T) {
+
+	testCases := []struct {
+		testName      string
+		nodeIPExists  bool
+		index         int
+		node          *v1.Node
+		nodeAddresses []v1.NodeAddress
+	}{
+		{
+			testName:     "node provided IP exists",
+			nodeIPExists: true,
+			index:        1,
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node0",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "192.168.25.1",
+					},
+				},
+			},
+			nodeAddresses: []v1.NodeAddress{
+				{
+					Type:    v1.NodeInternalIP,
+					Address: "192.168.17.8",
+				},
+				{
+					Type:    v1.NodeInternalIP,
+					Address: "192.168.25.1",
+				},
+				{
+					Type:    v1.NodeInternalIP,
+					Address: "10.1.78.4",
+				},
+			},
+		},
+		{
+			testName:     "node provided IP exists but was not found",
+			nodeIPExists: true,
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node0",
+					Annotations: map[string]string{
+						cloudproviderapi.AnnotationAlphaProvidedIPAddr: "192.168.25.1",
+					},
+				},
+			},
+			nodeAddresses: []v1.NodeAddress{
+				{
+					Type:    v1.NodeInternalIP,
+					Address: "192.168.17.8",
+				},
+				{
+					Type:    v1.NodeInternalIP,
+					Address: "10.1.78.4",
+				},
+			},
+		},
+		{
+			testName:     "node provided IP does not exist",
+			nodeIPExists: false,
+			node: &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "node0",
+					Annotations: map[string]string{},
+				},
+			},
+			nodeAddresses: []v1.NodeAddress{
+				{
+					Type:    v1.NodeInternalIP,
+					Address: "192.168.17.8",
+				},
+				{
+					Type:    v1.NodeInternalIP,
+					Address: "192.168.25.1",
+				},
+				{
+					Type:    v1.NodeInternalIP,
+					Address: "10.1.78.4",
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			nodeIP, nodeIPExists := ensureNodeProvidedIPExists(tc.node, tc.nodeAddresses)
+			assert.Equal(t, nodeIPExists, tc.nodeIPExists)
+			if tc.index != 0 {
+				assert.Equal(t, nodeIP, &tc.nodeAddresses[tc.index])
+			} else {
+				assert.Empty(t, nodeIP)
+			}
+		})
+	}
+}
+
 func Test_syncNode(t *testing.T) {
 	tests := []struct {
 		name         string
