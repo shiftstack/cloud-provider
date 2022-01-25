@@ -693,17 +693,35 @@ func nodeAddressesChangeDetected(addressSet1, addressSet2 []v1.NodeAddress) bool
 	return false
 }
 
+// ensureNodeProvidedIPExists will check if the nodeIP suggested by the user is
+// present and move it to the front of the list of node IP addresses if so
 func ensureNodeProvidedIPExists(node *v1.Node, nodeAddresses []v1.NodeAddress) (*v1.NodeAddress, bool) {
+	find := func(address string) (int, bool) {
+		for i, nodeAddress := range nodeAddresses {
+			if nodeAddress.Address == address {
+				return i, true
+			}
+		}
+		return 0, false
+	}
+
 	var nodeIP *v1.NodeAddress
 	nodeIPExists := false
 	if providedIP, ok := node.ObjectMeta.Annotations[cloudproviderapi.AnnotationAlphaProvidedIPAddr]; ok {
 		nodeIPExists = true
-		for i := range nodeAddresses {
-			if nodeAddresses[i].Address == providedIP {
-				nodeIP = &nodeAddresses[i]
-				break
-			}
+		index, nodeIPFound := find(providedIP)
+		if !nodeIPFound {
+			return nodeIP, nodeIPExists
 		}
+
+		if index == 0 {
+			return &nodeAddresses[index], nodeIPExists
+		}
+
+		primary := nodeAddresses[index]
+		copy(nodeAddresses[1:index+1], nodeAddresses[0:index])
+		nodeAddresses[0] = primary
+		nodeIP = &primary
 	}
 	return nodeIP, nodeIPExists
 }

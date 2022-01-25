@@ -167,14 +167,14 @@ func Test_ensureNodeProvidedIPExists(t *testing.T) {
 	testCases := []struct {
 		testName      string
 		nodeIPExists  bool
-		index         int
+		nodeIPFound   bool
 		node          *v1.Node
 		nodeAddresses []v1.NodeAddress
 	}{
 		{
 			testName:     "node provided IP exists",
 			nodeIPExists: true,
-			index:        1,
+			nodeIPFound:  true,
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node0",
@@ -201,6 +201,7 @@ func Test_ensureNodeProvidedIPExists(t *testing.T) {
 		{
 			testName:     "node provided IP exists but was not found",
 			nodeIPExists: true,
+			nodeIPFound:  false,
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node0",
@@ -223,6 +224,7 @@ func Test_ensureNodeProvidedIPExists(t *testing.T) {
 		{
 			testName:     "node provided IP does not exist",
 			nodeIPExists: false,
+			nodeIPFound:  false,
 			node: &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "node0",
@@ -249,8 +251,9 @@ func Test_ensureNodeProvidedIPExists(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			nodeIP, nodeIPExists := ensureNodeProvidedIPExists(tc.node, tc.nodeAddresses)
 			assert.Equal(t, nodeIPExists, tc.nodeIPExists)
-			if tc.index != 0 {
-				assert.Equal(t, nodeIP, &tc.nodeAddresses[tc.index])
+			if tc.nodeIPFound {
+				assert.Equal(t, nodeIP, &tc.nodeAddresses[0])
+				assert.Equal(t, nodeIP.Address, tc.node.ObjectMeta.Annotations[cloudproviderapi.AnnotationAlphaProvidedIPAddr])
 			} else {
 				assert.Empty(t, nodeIP)
 			}
